@@ -43,10 +43,10 @@ class SpringMass(PhysicalObject):
 if __name__ == "__main__":
     ball = FallingObject("ball", 1)
     dt = 0.01
-    t = 0
-    while t < 3:
+    # 총 스텝 수를 정수로 계산하여 오차를 방지
+    num_steps = int(3 / dt)
+    for _ in range(num_steps):
         ball.update(dt)
-        t += dt
     print(ball.describe())
     
     objects = [
@@ -56,8 +56,7 @@ if __name__ == "__main__":
     ]
     dt = 0.01
     for obj in objects:
-        t = 0
-        while t < 3:
+        num_steps = int(3 / dt)
+        for _ in range(num_steps):
             obj.update(dt)
-            t += dt
         print(obj.describe())

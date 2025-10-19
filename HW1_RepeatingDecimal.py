@@ -166,26 +166,33 @@ class RepeatingDecimal:
             return 0
 
     def __add__(self, other):
+        # 1. 새로운 비반복부와 반복부의 길이를 결정
+        new_non_repeat_len = max(len(self.__non_repeat), len(other.__non_repeat))
+
+        # 반복부가 없는 경우 길이를 1로 간주하여 최소공배수를 계산
+        self_repeat_len = len(self.__repeat) or 1
+        other_repeat_len = len(other.__repeat) or 1
+        new_repeat_len = math.lcm(self_repeat_len, other_repeat_len)
+
+        # 2. 정수부를 먼저 더함
         new_int_part = self.__sign * self.__int_part + other.__sign * other.__int_part
-        l1 = len(self.__non_repeat)
-        l2 = len(other.__non_repeat)
-        max_l = max(l1, l2)
-        p1 = len(self.__repeat) if self.__repeat else 0
-        p2 = len(other.__repeat) if other.__repeat else 0
-        lcm = math.lcm(p1, p2) if p1 and p2 else (p1 or p2)
-        if p1:
-            self_repeat_ext = self.__repeat * (lcm // p1)
-        else:
-            self_repeat_ext = [0] * lcm
-        if p2:
-            other_repeat_ext = other.__repeat * (lcm // p2)
-        else:
-            other_repeat_ext = [0] * lcm
-        result_repeat = [self.__sign * self_repeat_ext[j] + other.__sign * other_repeat_ext[j] for j in range(lcm)]
-        result_non_repeat = [self.__sign * self.get_digit(j + 1) + other.__sign * other.get_digit(j + 1) for j in range(max_l)]
-        new_sign = 1
-        new = RepeatingDecimal(new_sign, new_int_part, result_non_repeat, result_repeat)
-        return new
+
+        # 3. 비반복부의 각 자릿수를 더함
+        # get_digit(pos)는 소수점 아래 pos번째 숫자를 반환
+        new_non_repeat = [
+            self.__sign * self.get_digit(i) + other.__sign * other.get_digit(i)
+            for i in range(1, new_non_repeat_len + 1)
+        ]
+
+        # 4. 반복부의 각 자릿수를 더함
+        new_repeat = [
+            self.__sign * self.get_digit(i) + other.__sign * other.get_digit(i)
+            for i in range(new_non_repeat_len + 1, new_non_repeat_len + new_repeat_len + 1)
+        ]
+
+        # 5. 계산된 "정리되지 않은" 값들로 새 객체를 생성
+        # __init__ 내부의 cleanup() 메서드가 정규화(자리올림 등)를 처리
+        return RepeatingDecimal(1, new_int_part, new_non_repeat, new_repeat)
 
     def __sub__(self, other):
         return self + (-other)

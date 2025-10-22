@@ -197,19 +197,95 @@ class RepeatingDecimal:
     def __sub__(self, other):
         return self + (-other)
 
+    def to_fraction(self):
+        """Converts the RepeatingDecimal object to a (numerator, denominator) pair."""
+        if self.__sign == 0:
+            return 0, 1
+
+        # 1. 비반복부(non_repeat)를 분수로 변환
+        num_non_repeat_str = ''.join(map(str, self.__non_repeat))
+        num_non_repeat = int(num_non_repeat_str) if num_non_repeat_str else 0
+        den_non_repeat = 10 ** len(self.__non_repeat)
+
+        # 2. 반복부(repeat)를 분수로 변환
+        num_repeat_str = ''.join(map(str, self.__repeat))
+        num_repeat = int(num_repeat_str) if num_repeat_str else 0
+        # 예: [3] -> 3/9, [14] -> 14/99
+        den_repeat_base = (10 ** len(self.__repeat) - 1) if self.__repeat else 1
+
+        # 반복부는 비반복부의 자릿수만큼 10의 거듭제곱으로 나눠줘야 함
+        # 예: 0.1[6] -> 1/10 + 6/90
+        den_repeat = den_repeat_base * den_non_repeat
+
+        # 3. 정수부와 소수부를 합쳐 전체 분수를 만듦
+        # (정수부) + (비반복부 분수) + (반복부 분수)
+        frac_num = num_non_repeat * den_repeat_base + num_repeat
+
+        total_num = self.__int_part * den_repeat + frac_num
+        total_den = den_repeat
+
+        # 4. 부호 적용 및 약분
+        total_num *= self.__sign
+        common = math.gcd(total_num, total_den)
+        return total_num // common, total_den // common
+
+    @classmethod
+    def from_fraction(cls, num, den):
+        """Converts a (numerator, denominator) pair to a RepeatingDecimal object."""
+        if den == 0:
+            raise ZeroDivisionError("Denominator cannot be zero")
+        if num == 0:
+            return cls(0, 0, [], [])
+
+        sign = 1 if num * den > 0 else -1
+        num, den = abs(num), abs(den)
+
+        int_part = num // den
+        rem = num % den
+
+        if rem == 0:
+            return cls(sign, int_part, [], [])
+
+        # 긴 나눗셈(long division)을 시뮬레이션하여 반복부를 찾음
+        frac_digits = []
+        remainders = {}  # {나머지: 위치} 저장
+
+        while rem != 0 and rem not in remainders:
+            remainders[rem] = len(frac_digits)
+            rem *= 10
+            frac_digits.append(rem // den)
+            rem %= den
+
+        if rem == 0:  # 나누어 떨어지는 경우 (반복부 없음)
+            non_repeat_part = frac_digits
+            repeat_part = []
+        else:  # 반복되는 나머지가 나타난 경우
+            start_pos = remainders[rem]
+            non_repeat_part = frac_digits[:start_pos]
+            repeat_part = frac_digits[start_pos:]
+
+        return cls(sign, int_part, non_repeat_part, repeat_part)
+
     def __mul__(self, other):
-        dec_self = self.to_decimal()
-        dec_other = other.to_decimal()
-        result = dec_self * dec_other
-        return self.from_decimal(result)
+        num1, den1 = self.to_fraction()
+        num2, den2 = other.to_fraction()
+
+        res_num = num1 * num2
+        res_den = den1 * den2
+
+        return RepeatingDecimal.from_fraction(res_num, res_den)
 
     def __truediv__(self, other):
-        if other.__sign == 0 and other.__int_part == 0 and not other.__non_repeat and not other.__repeat:
+        num1, den1 = self.to_fraction()
+        num2, den2 = other.to_fraction()
+
+        if num2 == 0:
             raise ZeroDivisionError("Division by zero")
-        dec_self = self.to_decimal()
-        dec_other = other.to_decimal()
-        result = dec_self / dec_other
-        return self.from_decimal(result)
+
+        res_num = num1 * den2
+        res_den = den1 * num2
+
+        return RepeatingDecimal.from_fraction(res_num, res_den)
 
     def __str__(self):
         if self.__sign == 0:
